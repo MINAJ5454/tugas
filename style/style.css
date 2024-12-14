@@ -1,0 +1,16 @@
+.div-surat {
+    display: flex;
+    flex-direction: column;
+}
+
+.div-surat label {
+    display: flex;
+    align-items: center;
+    width: max-content;
+    gap: 10px;
+}
+
+#surat {
+    width: max-content;
+    height: 20px;
+}
