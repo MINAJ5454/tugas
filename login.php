@@ -21,7 +21,7 @@ if (isset($_POST['login'])) {
             // Jika login berhasil, simpan data user ke session
             $_SESSION['username'] = $user['username'];
 
-            header("Location: index.php"); // Redirect ke halaman home
+            header("Location: data/view_data_warga.php"); // Redirect ke halaman home
             exit();
         } else {
             $_SESSION['error'] = "Username atau password salah";
@@ -44,6 +44,7 @@ if (isset($_GET['logout'])) {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -56,6 +57,7 @@ if (isset($_GET['logout'])) {
         }
     </style>
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <a class="navbar-brand" href="#">Sistem Desa</a>
@@ -69,8 +71,38 @@ if (isset($_GET['logout'])) {
             </ul>
         </div>
     </nav>
+    <section class="vh-100">
+        <div class="container h-100">
+            <div class="row d-flex align-items-center justify-content-center h-100">
+                <div class="col-md-7 col-lg-5 col-xl-5">
+                    <?php if (!$isLoggedIn): ?>
+                        <?php if (isset($_SESSION['error'])): ?>
+                            <div class="alert alert-danger mt-3"><?php echo $_SESSION['error'];
+                                                                    unset($_SESSION['error']); ?></div>
+                        <?php endif; ?>
+                        <h3 class="text-center">Login Sistem Desa</h3>
+                        <form method="POST" action="login.php">
+                            <!-- Email input -->
+                            <div data-mdb-input-init class="form-outline mb-4">
+                                <label class="form-label" for="form1Example13">Username</label>
+                                <input type="text" id="form1Example13" class="form-control form-control-lg" name="username" />
+                            </div>
 
-    <div class="container mt-5">
+                            <!-- Password input -->
+                            <div data-mdb-input-init class="form-outline mb-4">
+                                <label class="form-label" for="form1Example23">Password</label>
+                                <input type="password" id="form1Example23" class="form-control form-control-lg" name="password" />
+                            </div>
+                            <!-- Submit button -->
+                            <button type="submit" data-mdb-button-init data-mdb-ripple-init class="btn btn-primary btn-lg btn-block" name="login">Login</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- <div class="container mt-5">
         <?php if (!$isLoggedIn): ?>
             <h1>Login</h1>
             <form method="POST" action="login.php">
@@ -86,12 +118,14 @@ if (isset($_GET['logout'])) {
                 <button type="submit" name="login" class="btn btn-primary">Login</button ```php
             </form>
             <?php if (isset($_SESSION['error'])): ?>
-                <div class="alert alert-danger mt-3"><?php echo $_SESSION['error']; unset($_SESSION['error']); ?></div>
+                <div class="alert alert-danger mt-3"><?php echo $_SESSION['error'];
+                                                        unset($_SESSION['error']); ?></div>
             <?php endif; ?>
         <?php else: ?>
             <h1>Selamat Datang, <?php echo $_SESSION['username']; ?>!</h1>
             <p>Anda telah berhasil login.</p>
         <?php endif; ?>
-    </div>
+    </div> -->
 </body>
+
 </html>
