@@ -43,10 +43,15 @@ $totalPages = ceil($totalData / $limit); // Menghitung total halaman
 
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light px-5">
-        <a class="navbar-brand" href="#">Sistem Desa</a>
-        <div class="collapse navbar-collapse d-flex justify-content-between">
-            <ul class="navbar-nav mr-auto">
+        <div>
+            <a class="navbar-brand" href="#">Sistem Desa</a>
+        </div>
+        <div class="collapse navbar-collapse ">
+            <ul class="navbar-nav ms-auto">
                 <li class="nav-item"><a class="nav-link" href="view_data_warga.php">Lihat Data Warga</a></li>
+            </ul>
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item"><a class="nav-link" href="view_data_kegiatan.php">Kegiatan</a></li>
             </ul>
             <form method="POST">
                 <button name="logout" class="btn btn-danger">Logout</button>

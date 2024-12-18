@@ -43,6 +43,9 @@ $isAdmin = isset($_SESSION['username'])
                 <?php if ($isAdmin): ?>
                     <li class="nav-item"><a class="nav-link" href="data/view_data_warga.php">Lihat Data Warga</a></li>
                 <?php endif; ?>
+                <?php if ($isAdmin): ?>
+                    <li class="nav-item"><a class="nav-link" href="data/view_data_warga.php">Kegiatan</a></li>
+                <?php endif; ?>
             </ul>
             <form method="POST">
                 <?php if ($isAdmin): ?>
