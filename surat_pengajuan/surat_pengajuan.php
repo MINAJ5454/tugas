@@ -62,7 +62,7 @@ if (isset($_POST['submit'])) {
                     <a name="logout" class="btn btn-danger">Logout</a>
                 <?php endif; ?>
                 <?php if (!$isAdmin): ?>
-                    <a href="login.php" class="btn btn-primary">Login</a>
+                    <a href="../login.php" class="btn btn-primary">Login</a>
                 <?php endif; ?>
             </form>
         </div>

@@ -1,4 +1,16 @@
 <?php
+session_start();
+if (!isset($_SESSION['username'])) {
+    header("Location: ../index.php");
+    exit();
+}
+
+if (isset($_POST['logout'])) {
+    session_unset();
+    session_destroy();
+    header("Location: ../index.php");
+    exit();
+}
 include('../db_connection.php');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -95,17 +107,64 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } else {
         echo "<div class='alert alert-danger' role='alert'>Gagal menambahkan data: " . $conn->error . "</div>";
     }
-
     $stmt->close();
-    $conn->close();
 }
 
+
+
+// Tentukan jumlah data per halaman
+$resultsPerPage = 5;
+
+// Menangani pagination untuk Ramadhan
+$pageRamadhan = isset($_GET['page_ramadhan']) ? (int)$_GET['page_ramadhan'] : 1;
+$offsetRamadhan = ($pageRamadhan - 1) * $resultsPerPage;
+$sqlRamadhan = "SELECT * FROM kegiatan_desa WHERE kategori_id = 1 ORDER BY tanggal DESC LIMIT $resultsPerPage OFFSET $offsetRamadhan";
+$resultRamadhan = $conn->query($sqlRamadhan);
+// Menangani pagination untuk Lomba
+$pageLomba = isset($_GET['page_lomba']) ? (int)$_GET['page_lomba'] : 1;
+$offsetLomba = ($pageLomba - 1) * $resultsPerPage;
+$sqlLomba = "SELECT k.id AS kegiatan_id, k.kategori_id, k.tanggal, k.kegiatan, k.tempat, k.foto, l.nama_lomba
+             FROM kegiatan_desa k
+             LEFT JOIN lomba l ON k.id = l.kegiatan_id
+             WHERE k.kategori_id = 2
+             ORDER BY k.tanggal DESC LIMIT $resultsPerPage OFFSET $offsetLomba";
+$resultLomba = $conn->query($sqlLomba);
+
+// Menangani pagination untuk RWRT
+$pageRWRT = isset($_GET['page_rwrt']) ? (int)$_GET['page_rwrt'] : 1;
+$offsetRWRT = ($pageRWRT - 1) * $resultsPerPage;
+$sqlRWRT = "SELECT k.id AS kegiatan_id, k.kategori_id, k.tanggal, k.kegiatan, k.tempat, k.foto, r.rw_rt, r.nama_calon
+            FROM kegiatan_desa k
+            LEFT JOIN rw_rt r ON k.id = r.kegiatan_id
+            WHERE k.kategori_id = 3
+            ORDER BY k.tanggal DESC LIMIT $resultsPerPage OFFSET $offsetRWRT";
+$resultRWRT = $conn->query($sqlRWRT);
+
+// Menangani pagination untuk Penyuluhan
+$pagePenyuluhan = isset($_GET['page_penyuluhan']) ? (int)$_GET['page_penyuluhan'] : 1;
+$offsetPenyuluhan = ($pagePenyuluhan - 1) * $resultsPerPage;
+$sqlPenyuluhan = "SELECT k.id AS kegiatan_id, k.kategori_id, k.tanggal, k.kegiatan, k.tempat, k.foto, p.topik
+                  FROM kegiatan_desa k
+                  LEFT JOIN penyuluhan p ON k.id = p.kegiatan_id
+                  WHERE k.kategori_id = 4
+                  ORDER BY k.tanggal DESC LIMIT $resultsPerPage OFFSET $offsetPenyuluhan";
+$resultPenyuluhan = $conn->query($sqlPenyuluhan);
+
+
+// Total data untuk pagination
+$totalRamadhan = $conn->query("SELECT COUNT(*) AS total FROM kegiatan_desa WHERE kategori_id = 1")->fetch_assoc()['total'];
+$totalLomba = $conn->query("SELECT COUNT(*) AS total FROM kegiatan_desa WHERE kategori_id = 2")->fetch_assoc()['total'];
+$totalRWRT = $conn->query("SELECT COUNT(*) AS total FROM kegiatan_desa WHERE kategori_id = 3")->fetch_assoc()['total'];
+$totalPenyuluhan = $conn->query("SELECT COUNT(*) AS total FROM kegiatan_desa WHERE kategori_id = 4")->fetch_assoc()['total'];
+
+// Total pages untuk setiap kategori
+$totalPages['ramadhan'] = ceil($totalRamadhan / $resultsPerPage);
+$totalPages['lomba'] = ceil($totalLomba / $resultsPerPage);
+$totalPages['rwrt'] = ceil($totalRWRT / $resultsPerPage);
+$totalPages['penyuluhan'] = ceil($totalPenyuluhan / $resultsPerPage);
+
+$conn->close();
 ?>
-
-
-
-
-
 
 
 
@@ -215,24 +274,293 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <button type="submit" class="btn btn-primary">Simpan</button>
             </form>
         </div>
+        <div class="container mt-5">
+            <?php foreach (['ramadhan', 'lomba', 'rwrt', 'penyuluhan'] as $category): ?>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Kegiatan <?= ucfirst($category) ?></h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <?php if ($category == 'ramadhan'): ?>
+                                            <th>Tanggal</th>
+                                            <th>Kegiatan</th>
+                                            <th>Tempat</th>
+                                            <th>Foto</th>
+                                            <th>Aksi</th>
+                                        <?php elseif ($category == 'lomba'): ?>
+                                            <th>Tanggal</th>
+                                            <th>Nama Lomba</th>
+                                            <th>Tempat</th>
+                                            <th>Foto</th>
+                                            <th>Aksi</th>
+                                        <?php elseif ($category == 'rwrt'): ?>
+                                            <th>RW/RT</th>
+                                            <th>Nama Calon</th>
+                                            <th>Foto</th>
+                                            <th>Aksi</th>
+                                        <?php elseif ($category == 'penyuluhan'): ?>
+                                            <th>Tanggal</th>
+                                            <th>Topik</th>
+                                            <th>Tempat</th>
+                                            <th>Foto</th>
+                                            <th>Aksi</th>
+                                        <?php endif; ?>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    // Menampilkan data kategori sesuai dengan kategori yang aktif
+                                    if ($category == 'ramadhan' && $resultRamadhan->num_rows > 0):
+                                        while ($activity = $resultRamadhan->fetch_assoc()):
+                                    ?>
+                                            <tr>
+                                                <td><?= $activity['tanggal'] ?></td>
+                                                <td><?= $activity['kegiatan'] ?></td>
+                                                <td><?= $activity['tempat'] ?></td>
+                                                <td>
+                                                    <?php if ($activity['foto']): ?>
+                                                        <img src="../data/<?= $activity['foto'] ?>" alt="Foto" style="max-width: 64px;">
+                                                    <?php else: ?>
+                                                        <span>No Image</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-warning btn-edit"
+                                                        data-kegiatan='<?= htmlspecialchars(json_encode($activity), ENT_QUOTES, 'UTF-8') ?>'>
+                                                        Edit
+                                                    </button>
+                                                    <a href="delete_kegiatan.php?id=<?= $activity['id'] ?>&kategori_id=<?= $activity['kategori_id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data ini?')">Hapus</a>
+                                                </td>
+                                            </tr>
+                                        <?php endwhile; ?>
+                                    <?php elseif ($category == 'lomba' && $resultLomba->num_rows > 0): ?>
+                                        <!-- Tampilkan data untuk Lomba -->
+                                        <?php while ($activity = $resultLomba->fetch_assoc()): ?>
+                                            <tr>
+                                                <td><?= $activity['tanggal'] ?></td>
+                                                <td><?= $activity['nama_lomba'] ?></td>
+                                                <td><?= $activity['tempat'] ?></td>
+                                                <td>
+                                                    <?php if ($activity['foto']): ?>
+                                                        <img src="../data/<?= $activity['foto'] ?>" alt="Foto" style="max-width: 64px;">
+                                                    <?php else: ?>
+                                                        <span>No Image</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-warning btn-edit"
+                                                        data-kegiatan='<?= htmlspecialchars(json_encode($activity), ENT_QUOTES, 'UTF-8') ?>'>
+                                                        Edit
+                                                    </button>
+                                                    <a href="delete_kegiatan.php?id=<?= $activity['kegiatan_id'] ?>&kategori_id=<?= $activity['kategori_id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data ini?')">Hapus</a>
+                                                </td>
+                                            </tr>
+                                        <?php endwhile; ?>
+                                    <?php elseif ($category == 'rwrt' && $resultRWRT->num_rows > 0): ?>
+                                        <!-- Tampilkan data untuk RWRT -->
+                                        <?php while ($activity = $resultRWRT->fetch_assoc()): ?>
+                                            <tr>
+                                                <td><?= $activity['rw_rt'] ?></td>
+                                                <td><?= $activity['nama_calon'] ?></td>
+                                                <td>
+                                                    <?php if ($activity['foto']): ?>
+                                                        <img src="../data/<?= $activity['foto'] ?>" alt="Foto" style="max-width: 64px;">
+                                                    <?php else: ?>
+                                                        <span>No Image</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-warning btn-edit"
+                                                        data-kegiatan='<?= htmlspecialchars(json_encode($activity), ENT_QUOTES, 'UTF-8') ?>'>
+                                                        Edit
+                                                    </button>
+                                                    <a href="delete_kegiatan.php?id=<?= $activity['kegiatan_id'] ?>&kategori_id=<?= $activity['kategori_id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data ini?')">Hapus</a>
+                                                </td>
+                                            </tr>
+                                        <?php endwhile; ?>
+                                    <?php elseif ($category == 'penyuluhan' && $resultPenyuluhan->num_rows > 0): ?>
+                                        <!-- Tampilkan data untuk Penyuluhan -->
+                                        <?php while ($activity = $resultPenyuluhan->fetch_assoc()): ?>
+                                            <tr>
+                                                <td><?= $activity['tanggal'] ?></td>
+                                                <td><?= $activity['topik'] ?></td>
+                                                <td><?= $activity['tempat'] ?></td>
+                                                <td>
+                                                    <?php if ($activity['foto']): ?>
+                                                        <img src="../data/<?= $activity['foto'] ?>" alt="Foto" style="max-width: 64px;">
+                                                    <?php else: ?>
+                                                        <span>No Image</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-warning btn-edit"
+                                                        data-kegiatan='<?= htmlspecialchars(json_encode($activity), ENT_QUOTES, 'UTF-8') ?>'>
+                                                        Edit
+                                                    </button>
+                                                    <a href="delete_kegiatan.php?id=<?= $activity['kegiatan_id'] ?>&kategori_id=<?= $activity['kategori_id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data ini?')">Hapus</a>
+                                                </td>
+                                            </tr>
+                                        <?php endwhile; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="5" class="text-center">Tidak ada data</td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
 
-        <!-- Link Bootstrap JS -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-ENjdO4Dr2bkBIFxQpeo5eJ3UVFLceScMO6VYjFtelqILg4mCJFDdErqh1T1BY4Wr" crossorigin="anonymous"></script>
+                        <!-- Pagination -->
+                        <?php if ($category == 'ramadhan'): ?>
+                            <nav>
+                                <ul class="pagination">
+                                    <?php for ($i = 1; $i <= $totalPages['ramadhan']; $i++): ?>
+                                        <li class="page-item <?= ($i == $pageRamadhan) ? 'active' : '' ?>">
+                                            <a class="page-link" href="?page_ramadhan=<?= $i ?>&page_lomba=<?= $pageLomba ?>&page_rwrt=<?= $pageRWRT ?>&page_penyuluhan=<?= $pagePenyuluhan ?>">
+                                                <?= $i ?>
+                                            </a>
+                                        </li>
+                                    <?php endfor; ?>
+                                </ul>
+                            </nav>
+                        <?php elseif ($category == 'lomba'): ?>
+                            <nav>
+                                <ul class="pagination">
+                                    <?php for ($i = 1; $i <= $totalPages['lomba']; $i++): ?>
+                                        <li class="page-item <?= ($i == $pageLomba) ? 'active' : '' ?>">
+                                            <a class="page-link" href="?page_ramadhan=<?= $pageRamadhan ?>&page_lomba=<?= $i ?>&page_rwrt=<?= $pageRWRT ?>&page_penyuluhan=<?= $pagePenyuluhan ?>">
+                                                <?= $i ?>
+                                            </a>
+                                        </li>
+                                    <?php endfor; ?>
+                                </ul>
+                            </nav>
+                        <?php elseif ($category == 'rwrt'): ?>
+                            <nav>
+                                <ul class="pagination">
+                                    <?php for ($i = 1; $i <= $totalPages['rwrt']; $i++): ?>
+                                        <li class="page-item <?= ($i == $pageRWRT) ? 'active' : '' ?>">
+                                            <a class="page-link" href="?page_ramadhan=<?= $pageRamadhan ?>&page_lomba=<?= $pageLomba ?>&page_rwrt=<?= $i ?>&page_penyuluhan=<?= $pagePenyuluhan ?>">
+                                                <?= $i ?>
+                                            </a>
+                                        </li>
+                                    <?php endfor; ?>
+                                </ul>
+                            </nav>
+                        <?php elseif ($category == 'penyuluhan'): ?>
+                            <nav>
+                                <ul class="pagination">
+                                    <?php for ($i = 1; $i <= $totalPages['penyuluhan']; $i++): ?>
+                                        <li class="page-item <?= ($i == $pagePenyuluhan) ? 'active' : '' ?>">
+                                            <a class="page-link" href="?page_ramadhan=<?= $pageRamadhan ?>&page_lomba=<?= $pageLomba ?>&page_rwrt=<?= $pageRWRT ?>&page_penyuluhan=<?= $i ?>">
+                                                <?= $i ?>
+                                            </a>
+                                        </li>
+                                    <?php endfor; ?>
+                                </ul>
+                            </nav>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+
+        </div>
+
+
+        <!-- Modal Update -->
+        <div class="modal fade" id="modalUpdate" tabindex="-1" aria-labelledby="modalUpdateLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <form action="update_kegiatan.php" method="POST" enctype="multipart/form-data" id="form-update-kegiatan">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalUpdateLabel">Update Kegiatan</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" name="id" id="update_id">
+
+                            <div class="mb-3">
+                                <label for="update_kategori_id" class="form-label">Kategori</label>
+                                <select name="kategori_id" id="update_kategori_id" class="form-select" required onchange="toggleUpdateInputFields()">
+                                    <option value="">Pilih Kategori</option>
+                                    <option value="1">Ramadhan</option>
+                                    <option value="2">Lomba</option>
+                                    <option value="3">RWRT</option>
+                                    <option value="4">Penyuluhan</option>
+                                </select>
+                            </div>
+
+                            <div id="update-input-general" class="mb-3" style="display: none;">
+                                <label for="update_tanggal" class="form-label">Tanggal</label>
+                                <input type="date" name="tanggal" id="update_tanggal" class="form-control">
+
+                                <label for="update_tempat" class="form-label">Tempat</label>
+                                <input type="text" name="tempat" id="update_tempat" class="form-control">
+                                <div class="box-update-kegiatan">
+                                    <label for="update_kegiatan" class="form-label">Kegiatan</label>
+                                    <input type="text" name="kegiatan" id="update_kegiatan" class="form-control">
+                                </div>
+                            </div>
+
+                            <div id="update-input-lomba" class="kategori-update-input" style="display: none;">
+                                <label for="update_nama_lomba" class="form-label">Nama Lomba</label>
+                                <input type="text" name="nama_lomba" id="update_nama_lomba" class="form-control">
+                            </div>
+
+                            <div id="update-input-rwrt" class="kategori-update-input" style="display: none;">
+                                <label for="update_rw_rt" class="form-label">RW/RT</label>
+                                <input type="text" name="rw_rt" id="update_rw_rt" class="form-control">
+                                <label for="update_nama_calon" class="form-label">Nama Calon</label>
+                                <input type="text" name="nama_calon" id="update_nama_calon" class="form-control">
+                            </div>
+
+                            <div id="update-input-penyuluhan" class="kategori-update-input" style="display: none;">
+                                <label for="update_topik" class="form-label">Topik</label>
+                                <input type="text" name="topik" id="update_topik" class="form-control">
+                            </div>
+
+                            <div class="mb-3">
+                                <img src="" alt="foto" id="update_foto_preview" style="max-width: 400px; height: 200px;">
+                                <br>
+                                <label for="update_foto" class="form-label">Upload Foto (Opsional)</label>
+                                <input type="file" name="foto" id="update_foto" class="form-control">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+        <!-- Bootstrap JS and Popper.js -->
+        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+
+
+
         <script>
             function toggleInputFields() {
                 const kategori = document.getElementById('kategori_id').value;
-                // Menyembunyikan semua input kategori terkait
                 document.querySelectorAll('.kategori-input').forEach(el => el.style.display = 'none');
 
-                // Menyembunyikan input kegiatan jika kategori bukan Ramadhan
                 const kegiatanInput = document.getElementById('input-general');
                 const kegiatan = document.querySelector('.box-kegiatan')
                 if (kategori == 1) { // Ramadhan
                     kegiatanInput.style.display = 'block';
-                    kegiatan.style.display = 'block'; // Menampilkan input kegiatan untuk Ramadhan
+                    kegiatan.style.display = 'block';
                 }
 
-                // Menangani input kategori lainnya
                 if (kategori == 2) {
                     document.getElementById('input-lomba').style.display = 'block';
                     kegiatan.style.display = 'none'
@@ -246,6 +574,94 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     kegiatanInput.style.display = 'block';
                 }
             }
+
+
+
+
+            // Menyesuaikan input yang tampil berdasarkan kategori
+            function toggleUpdateInputFields(kegiatan = null) {
+                var kategoriId = kegiatan ? kegiatan.kategori_id : document.getElementById('update_kategori_id').value;
+
+                // Menyembunyikan semua input kategori
+                document.querySelectorAll('.kategori-update-input').forEach(input => {
+                    input.style.display = 'none';
+                });
+
+                // Menampilkan input berdasarkan kategori yang dipilih
+                if (kategoriId == 1) {
+                    document.getElementById('update-input-general').style.display = 'block';
+                } else if (kategoriId == 2) {
+                    document.getElementById('update-input-lomba').style.display = 'block';
+                    document.querySelector('.box-update-kegiatan').style.display = 'none';
+                    document.getElementById('update-input-general').style.display = 'block';
+                } else if (kategoriId == 3) {
+                    document.getElementById('update-input-rwrt').style.display = 'block';
+                    document.getElementById('update-input-general').style.display = 'none';
+                } else if (kategoriId == 4) {
+                    document.getElementById('update-input-penyuluhan').style.display = 'block';
+                    document.querySelector('.box-update-kegiatan').style.display = 'none';
+                    document.getElementById('update-input-general').style.display = 'block';
+                }
+            }
+
+
+            document.querySelectorAll('.btn-edit').forEach(button => {
+                button.addEventListener('click', function() {
+                    var kegiatan = JSON.parse(button.getAttribute('data-kegiatan'));
+
+                    console.log(kegiatan); // Debugging: Lihat data kegiatan yang diterima
+
+                    // Menampilkan kategori berdasarkan data yang diterima
+                    document.getElementById('update_kategori_id').value = kegiatan.kategori_id || kegiatan.kegiatan_id; // Jika kategori_id ada, pakai itu, jika tidak gunakan kegiatan_id
+
+                    // Menyesuaikan input yang tampil di modal berdasarkan kategori
+                    toggleUpdateInputFields(kegiatan);
+
+                    // Isi data form dengan nilai dari kegiatan
+                    if (kegiatan.kategori_id == 1) { // Ramadhan
+                        document.getElementById('update_id').value = kegiatan.id; // ID Ramadhan
+                        document.getElementById('update_kegiatan').value = kegiatan.kegiatan;
+                        document.getElementById('update_tanggal').value = kegiatan.tanggal;
+                        document.getElementById('update_tempat').value = kegiatan.tempat;
+                        document.getElementById('update_foto_preview').src = kegiatan.foto;
+                    } else { // Untuk Lomba, RWRT, Penyuluhan menggunakan kegiatan_id
+                        document.getElementById('update_id').value = kegiatan.kegiatan_id;
+                        if (kegiatan.kategori_id == 2) { // Lomba
+                            document.getElementById('update_nama_lomba').value = kegiatan.nama_lomba;
+                            document.getElementById('update_tanggal').value = kegiatan.tanggal;
+                            document.getElementById('update_tempat').value = kegiatan.tempat;
+                            document.getElementById('update_foto_preview').src = kegiatan.foto;
+                        } else if (kegiatan.kategori_id == 3) { // RWRT
+                            document.getElementById('update_rw_rt').value = kegiatan.rw_rt;
+                            document.getElementById('update_nama_calon').value = kegiatan.nama_calon;
+                            document.getElementById('update_foto_preview').src = kegiatan.foto;
+                        } else if (kegiatan.kategori_id == 4) { // Penyuluhan
+                            document.getElementById('update_topik').value = kegiatan.topik;
+                            document.getElementById('update_tanggal').value = kegiatan.tanggal;
+                            document.getElementById('update_tempat').value = kegiatan.tempat;
+                            document.getElementById('update_foto_preview').src = kegiatan.foto;
+
+                        }
+                    }
+
+                    // Menampilkan modal
+                    new bootstrap.Modal(document.getElementById('modalUpdate')).show();
+                });
+            });
+
+
+
+            document.querySelectorAll('.btn-delete').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    var id = this.getAttribute('data-id');
+
+                    // Set the ID to the delete form
+                    document.getElementById('delete_id').value = id;
+
+                    // Show the delete confirmation modal
+                    new bootstrap.Modal(document.getElementById('modalDelete')).show();
+                });
+            });
         </script>
 
 
